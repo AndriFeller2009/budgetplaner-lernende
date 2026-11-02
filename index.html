@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Budgetplaner für Lernende</title>
+<style>
+  /* ===== Design: weiches «Soft-UI»-Styleguide (Farben oben unter :root anpassbar) ===== */
+  :root{--bg:#ebe9e4;--surface:#f4f2ee;--ink:#2a2e2d;--muted:#6c7270;--mint:#8fe0c4;--mintd:#4fbf99;--grey:#c9c8c4;
+    --pos:#1f7a5f;--neg:#b3382f;--mid:#9a6b00;--sd:#c9c5bc;--sl:#ffffff;
+    --raise:9px 9px 18px var(--sd),-9px -9px 18px var(--sl);--raise-s:4px 4px 9px var(--sd),-4px -4px 9px var(--sl);
+    --inset:inset 4px 4px 9px var(--sd),inset -4px -4px 9px var(--sl);--glow:0 0 0 3px var(--mint),0 0 16px rgba(143,224,196,.95)}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;font-family:Inter,"Segoe UI",system-ui,-apple-system,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.45;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  h2{margin:0 0 14px;font-size:1.15rem;letter-spacing:-.2px}
+  label{display:block;font-size:.8rem;font-weight:600;color:var(--muted);margin:0 0 6px 6px}
+  input,select,button{font:inherit;border:2px solid transparent;color:var(--ink);width:100%;touch-action:manipulation}
+  input,select{background:var(--surface);border-radius:999px;padding:12px 18px;box-shadow:var(--inset)}
+  input:focus,select:focus{outline:none;box-shadow:var(--inset),var(--glow)}
+  button{cursor:pointer;border-radius:999px;padding:12px 20px;background:var(--mint);color:#0f4636;font-weight:700;box-shadow:var(--raise-s);transition:box-shadow .15s}
+  button:hover{box-shadow:var(--raise-s),var(--glow)}
+  button:active{box-shadow:var(--inset)}
+  button.sec{background:var(--surface);color:var(--ink)} button.del{background:var(--surface);color:var(--neg)}
+  .pos{color:var(--pos)} .neg{color:var(--neg)} .mid{color:var(--mid)}
+  .note{font-size:.82rem;color:var(--muted);margin:6px 0 0}
+  .only-print{display:none}
+  .card{background:var(--surface);border-radius:28px;padding:22px;box-shadow:var(--raise)}
+  .bar{height:14px;background:var(--surface);border-radius:999px;box-shadow:var(--inset);overflow:hidden;min-width:70px}
+  .bar i{display:block;height:100%;background:var(--mintd);border-radius:999px}
+  .bar i.over{background:#ee8a8a} .bar i.near{background:#f0cf5c}
+  .warnbox{border-radius:22px;padding:12px 18px;font-size:.9rem;font-weight:600;box-shadow:var(--raise-s)}
+  .warnbox.red{background:#f6b3b3;color:#5b1a1a} .warnbox.orange{background:#f3dd8a;color:#5b4500}
+  .warnbox ul{margin:4px 0 0;padding-left:18px}
+  .donut{width:170px;height:170px;border-radius:50%;margin:0 auto 14px;position:relative;box-shadow:var(--raise)}
+  .donut::after{content:"";position:absolute;inset:38px;background:var(--surface);border-radius:50%;box-shadow:var(--inset)}
+  .legend{font-size:.82rem;display:grid;gap:4px}
+  .legend i{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:7px}
+  .hb{margin-bottom:10px;font-size:.8rem}
+  .hb .t{display:flex;justify-content:space-between;gap:8px}
+  .hb .b{height:8px;border-radius:999px;margin-top:3px}
+  .b.plan{background:#cdeadf} .b.ist{background:var(--mintd)} .b.ist.over{background:#ee8a8a}
+
+  header{padding:42px 16px 12px;text-align:center}
+  header h1{margin:0;font-size:clamp(2rem,6vw,3.3rem);font-weight:800;letter-spacing:-1.5px}
+  header h1 mark{background:var(--mint);color:#0f4636;padding:0 .3em;border-radius:20px;box-shadow:var(--raise-s)}
+  header p{margin:8px 0 0;color:var(--muted);font-weight:500}
+  main{max-width:920px;margin:0 auto;padding:16px 16px 48px;display:grid;gap:28px}
+  .row{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));align-items:end}
+  .kpis{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+  .kpi{background:var(--surface);border-radius:22px;padding:14px;text-align:center;box-shadow:var(--raise-s)}
+  .kpi:nth-child(4){background:#d6f3e7}
+  .kpi b{display:block;font-size:1.3rem} .kpi span{font-size:.78rem;font-weight:600;color:var(--muted)}
+  #warnungen{display:grid;gap:10px;margin-top:14px}
+  .table-wrap{overflow-x:auto;padding:4px}
+  table{width:100%;border-collapse:collapse;font-size:.92rem}
+  th,td{padding:10px 6px;text-align:right;border-bottom:1px solid #dcd9d2;white-space:nowrap}
+  th{font-size:.74rem;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+  th:first-child,td:first-child{text-align:left}
+  td input{padding:7px 12px;width:96px;text-align:right}
+  .small{width:auto;padding:6px 14px;font-size:.8rem}
+  .actions{display:flex;gap:14px;flex-wrap:wrap} .actions button{width:auto;flex:1}
+  .charts{display:grid;gap:22px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  @media print{
+    body{background:#fff} header{padding:0}
+    .no-print,.small{display:none!important} .only-print{display:block}
+    .card{box-shadow:none;border:1px solid #bbb;break-inside:avoid} .bar,.donut,.donut::after,.kpi,.warnbox,input{box-shadow:none}
+    td input{border:none;width:auto;padding:0;background:none}
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Wo bleibt mein <mark>Lohn</mark>?</h1>
+  <p>Der Budgetplaner für Lernende – gratis, ohne Anmeldung</p>
+</header>
+
+<main>
+  <!-- 1. Lohn -->
+  <section class="card">
+    <h2>1. Dein Lohn</h2>
+    <div class="row">
+      <div><label for="lohn">Monatlicher Nettolohn (CHF)</label>
+        <input id="lohn" type="number" min="0" step="10" inputmode="decimal" placeholder="z. B. 900"></div>
+      <div><label for="monat">Monat</label><input id="monat" type="month"></div>
+    </div>
+    <p class="note only-print" id="printMonat"></p>
+  </section>
+
+  <!-- 2. Übersicht, Warnungen, Prognose -->
+  <section class="card">
+    <h2>2. Übersicht</h2>
+    <div class="kpis">
+      <div class="kpi"><b id="kLohn">–</b><span>Lohn</span></div>
+      <div class="kpi"><b id="kBudget">–</b><span>Geplant (Budget)</span></div>
+      <div class="kpi"><b id="kAusg">–</b><span>Tatsächlich ausgegeben</span></div>
+      <div class="kpi"><b id="kFrei">–</b><span>Noch verfügbar</span></div>
+    </div>
+    <div id="warnungen"></div>
+    <p class="note" id="prognose"></p>
+  </section>
+
+  <!-- 3. Kategorien -->
+  <section class="card">
+    <h2>3. Budget pro Kategorie</h2>
+    <p class="note no-print">Trage ein, wie viel du pro Kategorie planst. Die Prozentwerte beziehen sich auf deinen Lohn. Ab 80 % des Budgets wird der Balken orange, über 100 % rot.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Kategorie</th><th>Budget</th><th>% Lohn</th><th>Ausgegeben</th><th>% Lohn</th><th>Übrig</th><th>Fortschritt</th></tr></thead>
+      <tbody id="katBody"></tbody>
+    </table></div>
+  </section>
+
+  <!-- 4. Diagramme -->
+  <section class="card">
+    <h2>4. Diagramme</h2>
+    <div class="charts">
+      <div><p class="note">Verteilung der Ausgaben</p><div id="donut" class="donut"></div><div id="legend" class="legend"></div></div>
+      <div><p class="note">Geplant (hell) und ausgegeben (dunkel)</p><div id="bars"></div></div>
+    </div>
+  </section>
+
+  <!-- 5. Ausgabe erfassen -->
+  <section class="card no-print">
+    <h2>5. Ausgabe erfassen</h2>
+    <div class="row">
+      <div><label for="aKat">Kategorie</label><select id="aKat"></select></div>
+      <div><label for="aBetrag">Betrag (CHF)</label><input id="aBetrag" type="number" min="0" step="0.05" inputmode="decimal"></div>
+      <div><label for="aText">Beschreibung (optional)</label><input id="aText" type="text" maxlength="60"></div>
+      <div><label for="aDatum">Datum</label><input id="aDatum" type="date"></div>
+      <div><button id="aSave">Hinzufügen</button></div>
+    </div>
+  </section>
+
+  <!-- 6. Liste der Ausgaben -->
+  <section class="card">
+    <h2>6. Meine Ausgaben</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Datum</th><th>Kategorie</th><th>Beschreibung</th><th>Betrag</th><th class="no-print"></th></tr></thead>
+      <tbody id="ausBody"></tbody>
+    </table></div>
+    <p class="note" id="leer"></p>
+  </section>
+
+    <!-- 7. Monatsverlauf -->
+  <section class="card">
+    <h2>7. Monatsverlauf</h2>
+    <div id="verlauf"></div>
+    <p class="note no-print">«Monat abschliessen» speichert den Monat im Verlauf, leert die Ausgaben und springt zum nächsten Monat. Lohn und Budgets bleiben.</p>
+  </section>
+
+  <section class="card no-print">
+    <div class="actions">
+      <button onclick="window.print()">🖨️ Drucken / als PDF speichern</button>
+      <button class="sec" id="abschluss">✅ Monat abschliessen</button>
+      <button class="sec" id="reset">Alles zurücksetzen</button>
+    </div>
+    <p class="note">Tipp: Im Druckfenster «Als PDF speichern» wählen. Deine Daten bleiben nur in deinem Browser gespeichert.</p>
+  </section>
+</main>
+
+<script>
+/* ===== 1. Kategorien (aus der Umfrage abgeleitet) ===== */
+const KATEGORIEN = ["Essen & Getränke","Freizeit & Ausgang","Shopping & Kleidung","Mobilität / Transport","Handy / Internet / Abos","Sport & Hobbys","Ferien & Reisen","Wohnen / Haushalt","Sparen","Sonstiges"];
+const FARBEN = ["#0f766e","#ff6b4a","#ffc83d","#3b82f6","#a855f7","#16a34a","#f472b6","#92400e","#1d2b2a","#94a3b8"];
+const ICON = {"Essen & Getränke":"🍔","Freizeit & Ausgang":"🎉","Shopping & Kleidung":"👕","Mobilität / Transport":"🚆","Handy / Internet / Abos":"📱","Sport & Hobbys":"⚽","Ferien & Reisen":"✈️","Wohnen / Haushalt":"🏠","Sparen":"🐷","Sonstiges":"📦"};
+
+/* ===== 2. Daten (werden im Browser gespeichert) ===== */
+let daten = { lohn:0, monat:"", budget:{}, ausgaben:[], verlauf:[] };
+let editId = null; // ID der Ausgabe, die gerade bearbeitet wird
+
+try { const s = localStorage.getItem("budgetApp"); if (s) daten = Object.assign(daten, JSON.parse(s)); } catch(e){}
+// Alte Kategorien aus früheren Versionen -> «Sonstiges»
+daten.ausgaben.forEach(a=>{ if(!KATEGORIEN.includes(a.kat)) a.kat="Sonstiges"; });
+function speichern(){ try{ localStorage.setItem("budgetApp", JSON.stringify(daten)); }catch(e){} }
+
+/* ===== 3. Hilfsfunktionen ===== */
+const $ = id => document.getElementById(id);
+const chf = n => "CHF " + (n||0).toLocaleString("de-CH",{minimumFractionDigits:2,maximumFractionDigits:2});
+const pct = n => daten.lohn>0 ? (n/daten.lohn*100).toFixed(1)+" %" : "–";
+const esc = s => String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const summe = k => daten.ausgaben.filter(a=>a.kat===k).reduce((t,a)=>t+a.betrag,0);
+const budgetTotal = () => KATEGORIEN.reduce((t,k)=>t+(daten.budget[k]||0),0);
+const ausTotal = () => daten.ausgaben.reduce((t,a)=>t+a.betrag,0);
+
+/* ===== 4. Anzeige aktualisieren ===== */
+function render(){
+  const bT = budgetTotal(), aT = ausTotal(), frei = daten.lohn - aT;
+
+  // Kennzahlen
+  $("kLohn").textContent = chf(daten.lohn);
+  $("kBudget").textContent = chf(bT);
+  $("kAusg").textContent = chf(aT);
+  $("kFrei").textContent = chf(frei);
+  $("kFrei").className = frei<0 ? "neg" : "pos";
+  $("printMonat").textContent = daten.monat ? "Monat: "+daten.monat : "";
+
+  // Warnungen: Kategorien ab 80 % (orange) bzw. über 100 % (rot)
+  const rot=[], orange=[];
+  KATEGORIEN.forEach(k=>{
+    const b=daten.budget[k]||0, a=summe(k);
+    if(k==="Sparen") return;                       // Sparen ist keine «Ausgabe», die man überschreitet
+    if(b>0 && a>b) rot.push(`${k}: ${chf(a-b)} über dem Budget`);
+    else if(b>0 && a>=b*0.8) orange.push(`${k}: schon ${Math.round(a/b*100)} % des Budgets verbraucht`);
+  });
+  let w = "";
+  if(daten.lohn>0 && aT>daten.lohn) w += `<div class="warnbox red">⚠️ Du hast mehr ausgegeben, als dein Lohn hergibt.</div>`;
+  if(daten.lohn>0 && bT>daten.lohn) w += `<div class="warnbox red">⚠️ Dein geplantes Budget ist höher als dein Lohn.</div>`;
+  if(rot.length) w += `<div class="warnbox red">🔴 Budget überschritten:<ul>${rot.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div>`;
+  if(orange.length) w += `<div class="warnbox orange">🟠 Achtung, bald aufgebraucht:<ul>${orange.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div>`;
+  $("warnungen").innerHTML = w;
+
+  // Prognose bis Monatsende (nur für den laufenden Monat, ohne «Sparen»)
+  const jetzt = new Date(), ym = jetzt.toISOString().slice(0,7);
+  if(daten.monat===ym && jetzt.getDate()<4){
+    $("prognose").textContent = "📈 Die Prognose erscheint ab dem 4. Tag des Monats, weil sie vorher zu ungenau wäre.";
+  } else if(daten.monat===ym){
+    const tag = jetzt.getDate(), tage = new Date(jetzt.getFullYear(), jetzt.getMonth()+1, 0).getDate();
+    const bisher = aT - summe("Sparen"), prog = bisher/tag*tage;
+    $("prognose").innerHTML = `📈 <b>Prognose bis Monatsende:</b> Bei gleichem Tempo gibst du bis Ende Monat etwa <b>${chf(prog)}</b> aus (bisher ${chf(bisher)} in ${tag} Tagen)`
+      + (daten.lohn>0 ? ` – dann bleiben ca. <b class="${daten.lohn-prog<0?"neg":"pos"}">${chf(daten.lohn-prog)}</b> übrig.` : ".")
+      + " Das ist nur eine grobe Schätzung.";
+  } else $("prognose").textContent = "📈 Die Prognose gibt es nur für den laufenden Monat.";
+
+  // Kategorien-Tabelle
+  $("katBody").innerHTML = KATEGORIEN.map(k=>{
+    const b = daten.budget[k]||0, a = summe(k), rest = b-a;
+    const w = b>0 ? Math.min(a/b*100,100) : (a>0?100:0);
+    const stufe = (k!=="Sparen" && b>0 && a>b) || (b===0 && a>0 && k!=="Sparen") ? "over" : (k!=="Sparen" && b>0 && a>=b*0.8 ? "near" : "");
+    return `<tr><td>${ICON[k]} ${esc(k)}</td>
+      <td><input type="number" min="0" step="5" value="${b||""}" data-kat="${esc(k)}" aria-label="Budget ${esc(k)}"></td>
+      <td>${pct(b)}</td><td>${chf(a)}</td><td>${pct(a)}</td>
+      <td class="${rest<0?"neg":"pos"}">${chf(rest)}</td>
+      <td><div class="bar"><i class="${stufe}" style="width:${w}%"></i></div></td></tr>`;
+  }).join("") + `<tr><th>Total</th><th>${chf(bT)}</th><th>${pct(bT)}</th><th>${chf(aT)}</th><th>${pct(aT)}</th><th></th><th></th></tr>`;
+
+  // Diagramm 1: Kreisdiagramm (reines CSS, kein Zusatz-Programm nötig)
+  const teile = KATEGORIEN.map((k,i)=>({k,a:summe(k),c:FARBEN[i]})).filter(t=>t.a>0);
+  if(teile.length){
+    let start=0;
+    const stops = teile.map(t=>{ const e=start+t.a/aT*100; const s=`${t.c} ${start}% ${e}%`; start=e; return s; });
+    $("donut").style.background = `conic-gradient(${stops.join(",")})`;
+    $("legend").innerHTML = teile.map(t=>`<span><i style="background:${t.c}"></i>${esc(t.k)} – ${(t.a/aT*100).toFixed(0)} %</span>`).join("");
+  } else {
+    $("donut").style.background = "#e5e7eb";
+    $("legend").innerHTML = "<span>Noch keine Ausgaben erfasst.</span>";
+  }
+
+  // Diagramm 2: Balken Budget vs. Ausgaben
+  const mx = Math.max(1,...KATEGORIEN.map(k=>Math.max(daten.budget[k]||0,summe(k))));
+  $("bars").innerHTML = KATEGORIEN.map(k=>{
+    const b=daten.budget[k]||0, a=summe(k); if(!b && !a) return "";
+    return `<div class="hb"><div class="t"><span>${esc(k)}</span><span>${chf(a)} / ${chf(b)}</span></div>
+      <div class="b plan" style="width:${b/mx*100}%"></div>
+      <div class="b ist ${k!=="Sparen" && a>b?"over":""}" style="width:${a/mx*100}%"></div></div>`;
+  }).join("") || "<p class='note'>Trage ein Budget oder Ausgaben ein, dann erscheinen hier die Balken.</p>";
+
+  // Ausgabenliste (neueste zuerst)
+  const liste = [...daten.ausgaben].sort((x,y)=>(y.datum||"").localeCompare(x.datum||""));
+  $("ausBody").innerHTML = liste.map(a=>`<tr>
+    <td>${esc(a.datum||"")}</td><td>${esc(a.kat)}</td><td style="text-align:left">${esc(a.text||"")}</td>
+    <td>${chf(a.betrag)}</td>
+    <td class="no-print"><button class="small sec" data-edit="${a.id}">Ändern</button>
+    <button class="small del" data-del="${a.id}">Löschen</button></td></tr>`).join("");
+  $("leer").textContent = liste.length ? "" : "Noch keine Ausgaben erfasst.";
+
+  // Monatsverlauf
+  if(daten.verlauf.length){
+    const m = Math.max(1,...daten.verlauf.map(v=>Math.max(v.lohn,v.aus)));
+    $("verlauf").innerHTML = `<div class="table-wrap"><table><thead><tr><th>Monat</th><th>Lohn</th><th>Ausgegeben</th><th>Gespart</th><th>Übrig</th><th>Ausgaben</th></tr></thead><tbody>`
+      + [...daten.verlauf].reverse().map(v=>`<tr><td>${esc(v.monat)}</td><td>${chf(v.lohn)}</td><td>${chf(v.aus)}</td><td>${chf(v.gespart)}</td>
+        <td class="${v.lohn-v.aus<0?"neg":"pos"}">${chf(v.lohn-v.aus)}</td>
+        <td><div class="bar" style="min-width:90px"><i class="${v.aus>v.lohn?"over":""}" style="width:${v.aus/m*100}%"></i></div></td></tr>`).join("")
+      + `</tbody></table></div>`;
+  } else $("verlauf").innerHTML = "<p class='note'>Noch kein Monat abgeschlossen.</p>";
+}
+
+/* ===== 5. Eingaben ===== */
+$("aKat").innerHTML = KATEGORIEN.map(k=>`<option>${esc(k)}</option>`).join("");
+$("aDatum").value = new Date().toISOString().slice(0,10);
+$("lohn").value = daten.lohn || "";
+$("monat").value = daten.monat || new Date().toISOString().slice(0,7);
+daten.monat = $("monat").value;
+
+$("lohn").addEventListener("input",e=>{ daten.lohn = Math.max(0,parseFloat(e.target.value)||0); speichern(); render(); });
+$("monat").addEventListener("change",e=>{ daten.monat = e.target.value; speichern(); render(); });
+
+// Budget pro Kategorie ändern
+$("katBody").addEventListener("change",e=>{
+  if(e.target.dataset.kat){ daten.budget[e.target.dataset.kat] = Math.max(0,parseFloat(e.target.value)||0); speichern(); render(); }
+});
+
+// Ausgabe hinzufügen oder (wenn editId gesetzt) speichern
+$("aSave").addEventListener("click",()=>{
+  const betrag = parseFloat($("aBetrag").value);
+  if(!(betrag>0)){ alert("Bitte einen Betrag grösser als 0 eingeben."); return; }
+  const eintrag = { kat:$("aKat").value, betrag, text:$("aText").value.trim(), datum:$("aDatum").value };
+  if(editId){ Object.assign(daten.ausgaben.find(a=>a.id===editId), eintrag); editId=null; $("aSave").textContent="Hinzufügen"; }
+  else daten.ausgaben.push({ id:Date.now(), ...eintrag });
+  $("aBetrag").value=""; $("aText").value="";
+  speichern(); render();
+});
+
+// Ändern / Löschen in der Liste
+$("ausBody").addEventListener("click",e=>{
+  const del = e.target.dataset.del, ed = e.target.dataset.edit;
+  if(del && confirm("Diese Ausgabe löschen?")){ daten.ausgaben = daten.ausgaben.filter(a=>a.id!=del); speichern(); render(); }
+  if(ed){
+    const a = daten.ausgaben.find(x=>x.id==ed); editId = a.id;
+    $("aKat").value=a.kat; $("aBetrag").value=a.betrag; $("aText").value=a.text||""; $("aDatum").value=a.datum||"";
+    $("aSave").textContent="Änderung speichern"; $("aBetrag").scrollIntoView({behavior:"smooth",block:"center"});
+  }
+});
+
+// Monat abschliessen: im Verlauf speichern, Ausgaben leeren, nächster Monat
+$("abschluss").addEventListener("click",()=>{
+  if(!confirm("Monat abschliessen? Die Ausgaben dieses Monats werden im Verlauf gespeichert und danach geleert.")) return;
+  const gespart = summe("Sparen");
+  const eintrag = { monat:daten.monat, lohn:daten.lohn, budget:budgetTotal(), aus:ausTotal(), gespart };
+  daten.verlauf = daten.verlauf.filter(v=>v.monat!==daten.monat); daten.verlauf.push(eintrag);
+  daten.verlauf.sort((a,b)=>a.monat.localeCompare(b.monat));
+  daten.ausgaben = [];
+  const [j,m] = daten.monat.split("-").map(Number), n = new Date(j,m,1);   // nächster Monat
+  daten.monat = n.getFullYear()+"-"+String(n.getMonth()+1).padStart(2,"0"); $("monat").value = daten.monat;
+  speichern(); render();
+});
+
+$("reset").addEventListener("click",()=>{
+  if(confirm("Wirklich alle Daten löschen (inkl. Verlauf)?")){
+    daten={lohn:0,monat:daten.monat,budget:{},ausgaben:[],verlauf:[]};
+    $("lohn").value="";
+    speichern(); render();
+  }
+});
+
+render();
+</script>
+</body>
+</html>
